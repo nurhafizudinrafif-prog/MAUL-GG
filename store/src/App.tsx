@@ -15,17 +15,11 @@ import { PaymentModal } from './components/PaymentModal';
 import { SuccessModal } from './components/SuccessModal';
 import { TrackingModal } from './components/TrackingModal';
 import { LiveSalesNotification } from './components/LiveSalesNotification';
-import { AdminDashboard } from './components/AdminDashboard';
 import { useStore } from './context/StoreContext';
 import { MessageCircle } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const { isAdminView, settings } = useStore();
-
-  // If Admin View is toggled, display the Admin Dashboard
-  if (isAdminView) {
-    return <AdminDashboard />;
-  }
+  const { settings } = useStore();
 
   const cleanWaNumber = settings.whatsappNumber.replace(/[^0-9]/g, '');
 

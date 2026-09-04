@@ -116,47 +116,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
     return localStorage.getItem('rxfif_admin_auth') === 'true';
   });
-  const [isAdminView, setIsAdminViewRaw] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const path = window.location.pathname.toLowerCase();
-      const hash = window.location.hash.toLowerCase();
-      return path.startsWith('/admin') || hash.includes('admin');
-    }
-    return false;
-  });
-
-  const setIsAdminView = (view: boolean) => {
-    setIsAdminViewRaw(view);
-    if (typeof window !== 'undefined') {
-      if (view) {
-        if (!window.location.pathname.startsWith('/admin')) {
-          window.history.pushState(null, '', '/admin');
-        }
-      } else {
-        if (window.location.pathname.startsWith('/admin')) {
-          window.history.pushState(null, '', '/');
-        }
-      }
-    }
-  };
+  const isAdminView = true;
+  const setIsAdminView = (_view: boolean) => {};
 
   const navigateTo = (path: string) => {
     if (typeof window !== 'undefined') {
       window.history.pushState(null, '', path);
-      const isAdm = path.startsWith('/admin') || path.includes('admin');
-      setIsAdminViewRaw(isAdm);
     }
   };
-
-  useEffect(() => {
-    const handlePopState = () => {
-      const path = window.location.pathname.toLowerCase();
-      const hash = window.location.hash.toLowerCase();
-      setIsAdminViewRaw(path.startsWith('/admin') || hash.includes('admin'));
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
 
   // Modals
   const [activeProductModal, setActiveProductModal] = useState<Product | null>(null);
@@ -286,7 +253,6 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const logoutAdmin = () => {
     setIsAdminLoggedIn(false);
     localStorage.removeItem('rxfif_admin_auth');
-    setIsAdminView(false);
   };
 
   // Modal Open/Close Controls
