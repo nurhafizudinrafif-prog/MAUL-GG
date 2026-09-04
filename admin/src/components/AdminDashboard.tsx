@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { Product, Order, PaymentMethod, OrderStatus } from '../types';
+import * as XLSX from 'xlsx';
 
 export const AdminDashboard: React.FC = () => {
   const {
@@ -267,49 +268,47 @@ Layanan: ${fulfillingOrder.productName} (${fulfillingOrder.package})
       return;
     }
 
-    const headers = [
-      'ID Pesanan',
-      'Tanggal Order',
-      'Nama Pelanggan',
-      'No. WhatsApp',
-      'Email Pelanggan',
-      'Produk',
-      'Paket / Durasi',
-      'Jumlah',
-      'Total Harga (Rp)',
-      'Metode Pembayaran',
-      'Status Pesanan',
-      'Akun Terkirim (User/Email)',
-      'Password Akun'
+    // Format data specifically for clean Excel columns
+    const excelRows = orders.map(order => ({
+      'ID Pesanan': order.id,
+      'Tanggal Order': new Date(order.createdAt).toLocaleString('id-ID'),
+      'Nama Pelanggan': order.customerName,
+      'No. WhatsApp': order.customerPhone,
+      'Email Pelanggan': order.customerEmail,
+      'Produk': order.productName,
+      'Paket / Durasi': order.package,
+      'Jumlah': order.quantity,
+      'Total Harga (Rp)': order.totalPrice,
+      'Metode Pembayaran': order.paymentMethodName,
+      'Status Pesanan': order.status.toUpperCase(),
+      'Akun Digital (Email/User)': order.credentials?.emailOrUser || '-',
+      'Password Akun': order.credentials?.passwordOrKey || '-'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(excelRows);
+
+    // Set auto column widths for beautiful layout in Excel
+    worksheet['!cols'] = [
+      { wch: 18 }, // ID Pesanan
+      { wch: 22 }, // Tanggal
+      { wch: 22 }, // Nama
+      { wch: 18 }, // WhatsApp
+      { wch: 26 }, // Email
+      { wch: 20 }, // Produk
+      { wch: 16 }, // Paket
+      { wch: 8 },  // Jumlah
+      { wch: 16 }, // Total Harga
+      { wch: 24 }, // Metode
+      { wch: 14 }, // Status
+      { wch: 28 }, // Akun Email
+      { wch: 20 }  // Password
     ];
 
-    const rows = orders.map(order => [
-      `"${order.id}"`,
-      `"${new Date(order.createdAt).toLocaleString('id-ID')}"`,
-      `"${(order.customerName || '').replace(/"/g, '""')}"`,
-      `"'\t${order.customerPhone}"`,
-      `"${(order.customerEmail || '').replace(/"/g, '""')}"`,
-      `"${(order.productName || '').replace(/"/g, '""')}"`,
-      `"${(order.package || '').replace(/"/g, '""')}"`,
-      order.quantity,
-      order.totalPrice,
-      `"${(order.paymentMethodName || '').replace(/"/g, '""')}"`,
-      `"${order.status.toUpperCase()}"`,
-      `"${(order.credentials?.emailOrUser || '-').replace(/"/g, '""')}"`,
-      `"${(order.credentials?.passwordOrKey || '-').replace(/"/g, '""')}"`
-    ]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Rekap Pesanan');
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
     const dateStr = new Date().toISOString().slice(0, 10);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Rekap_Pesanan_RAFIF_STORE_${dateStr}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    XLSX.writeFile(workbook, `Rekap_Pesanan_RAFIF_STORE_${dateStr}.xlsx`);
   };
 
   // If not logged in, show Login Screen
@@ -547,10 +546,10 @@ Layanan: ${fulfillingOrder.productName} (${fulfillingOrder.package})
                   type="button"
                   onClick={exportToExcel}
                   className="px-3.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 hover:text-white text-xs font-semibold flex items-center space-x-1.5 transition-all active:scale-95 shadow-sm"
-                  title="Unduh seluruh data pesanan ke format Excel (.csv)"
+                  title="Unduh seluruh data pesanan ke format asli Excel (.xlsx)"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Download Excel (.CSV)</span>
+                  <span>Download Excel (.XLSX)</span>
                 </button>
 
                 {/* Status Filter */}
