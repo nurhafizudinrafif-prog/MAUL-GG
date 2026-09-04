@@ -7,6 +7,7 @@ import {
   INITIAL_PAYMENT_METHODS,
   INITIAL_TESTIMONIALS
 } from '../data/initialData';
+import { pushCloudOrder, fetchCloudOrders, fetchCloudProducts, fetchCloudSettings } from '../services/cloudSync';
 
 interface StoreContextType {
   products: Product[];
@@ -122,6 +123,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  useEffect(() => {
+    // Sync products and settings from cloud if available
+    fetchCloudProducts().then(cloudProds => {
+      if (cloudProds && cloudProds.length > 0) setProducts(cloudProds);
+    });
+    fetchCloudSettings().then(cloudSettings => {
+      if (cloudSettings) setSettings(cloudSettings);
+    });
+  }, []);
+
   // Modals
   const [activeProductModal, setActiveProductModal] = useState<Product | null>(null);
   const [checkoutItem, setCheckoutItem] = useState<{ product: Product; quantity: number } | null>(null);
@@ -187,6 +198,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setOrders(prev => [newOrder, ...prev]);
+    pushCloudOrder(newOrder);
     return newOrder;
   };
 
@@ -268,6 +280,11 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const openTrackingModal = () => {
     setIsTrackingModalOpen(true);
+    fetchCloudOrders().then(cloudOrders => {
+      if (cloudOrders && cloudOrders.length > 0) {
+        setOrders(cloudOrders);
+      }
+    });
   };
 
   const closeTrackingModal = () => {

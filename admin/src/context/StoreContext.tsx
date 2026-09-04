@@ -7,6 +7,13 @@ import {
   INITIAL_PAYMENT_METHODS,
   INITIAL_TESTIMONIALS
 } from '../data/initialData';
+import {
+  fetchCloudOrders,
+  updateCloudOrder,
+  saveCloudOrders,
+  saveCloudProducts,
+  saveCloudSettings
+} from '../services/cloudSync';
 
 interface StoreContextType {
   products: Product[];
@@ -153,18 +160,43 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('rxfif_admin_auth', isAdminLoggedIn ? 'true' : 'false');
   }, [isAdminLoggedIn]);
 
+  // Real-time Cloud Sync for Orders
+  useEffect(() => {
+    let isMounted = true;
+    const syncFromCloud = async () => {
+      const cloudOrders = await fetchCloudOrders();
+      if (cloudOrders && cloudOrders.length > 0 && isMounted) {
+        setOrders(cloudOrders);
+      }
+    };
+
+    syncFromCloud();
+    // Poll every 3.5 seconds for instant real-time customer orders
+    const interval = setInterval(syncFromCloud, 3500);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
   // Actions
   const addProduct = (newProd: Omit<Product, 'id'>) => {
     const id = `prod-${Date.now()}`;
-    setProducts(prev => [...prev, { ...newProd, id }]);
+    const updated = [...products, { ...newProd, id }];
+    setProducts(updated);
+    saveCloudProducts(updated);
   };
 
   const updateProduct = (id: string, updated: Partial<Product>) => {
-    setProducts(prev => prev.map(p => (p.id === id ? { ...p, ...updated } : p)));
+    const updatedList = products.map(p => (p.id === id ? { ...p, ...updated } : p));
+    setProducts(updatedList);
+    saveCloudProducts(updatedList);
   };
 
   const deleteProduct = (id: string) => {
-    setProducts(prev => prev.filter(p => p.id !== id));
+    const updated = products.filter(p => p.id !== id);
+    setProducts(updated);
+    saveCloudProducts(updated);
   };
 
   const createOrder = (orderData: {
@@ -194,7 +226,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
-    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, status } : o)));
+    setOrders(prev => {
+      const updated = prev.map(o => (o.id === orderId ? { ...o, status } : o));
+      const target = updated.find(o => o.id === orderId);
+      if (target) {
+        updateCloudOrder(target);
+      }
+      return updated;
+    });
     if (currentSuccessOrder && currentSuccessOrder.id === orderId) {
       setCurrentSuccessOrder(prev => (prev ? { ...prev, status } : null));
     }
@@ -214,12 +253,16 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     setOrders(prev => prev.map(o => (o.id === orderId ? updatedOrder : o)));
+    updateCloudOrder(updatedOrder);
     return generateWhatsAppAccountDeliveryUrl(updatedOrder, credentials);
   };
 
   const updateSettings = (newSettings: Partial<StoreSettings>) => {
-    setSettings(prev => ({ ...prev, ...newSettings }));
+    const updated = { ...settings, ...newSettings };
+    setSettings(updated);
+    saveCloudSettings(updated);
   };
+
 
   const updatePaymentMethod = (id: string, updated: Partial<PaymentMethod>) => {
     setPaymentMethods(prev => prev.map(m => (m.id === id ? { ...m, ...updated } : m)));
