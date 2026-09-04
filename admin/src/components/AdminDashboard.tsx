@@ -29,7 +29,9 @@ import {
   MessageSquare,
   User,
   EyeOff,
-  Sparkles
+  Sparkles,
+  FileSpreadsheet,
+  Download
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { Product, Order, PaymentMethod, OrderStatus } from '../types';
@@ -257,6 +259,57 @@ Layanan: ${fulfillingOrder.productName} (${fulfillingOrder.package})
     updateSettings(settingsForm);
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 2500);
+  };
+
+  const exportToExcel = () => {
+    if (orders.length === 0) {
+      alert('Belum ada data pesanan untuk diunduh.');
+      return;
+    }
+
+    const headers = [
+      'ID Pesanan',
+      'Tanggal Order',
+      'Nama Pelanggan',
+      'No. WhatsApp',
+      'Email Pelanggan',
+      'Produk',
+      'Paket / Durasi',
+      'Jumlah',
+      'Total Harga (Rp)',
+      'Metode Pembayaran',
+      'Status Pesanan',
+      'Akun Terkirim (User/Email)',
+      'Password Akun'
+    ];
+
+    const rows = orders.map(order => [
+      `"${order.id}"`,
+      `"${new Date(order.createdAt).toLocaleString('id-ID')}"`,
+      `"${(order.customerName || '').replace(/"/g, '""')}"`,
+      `"'\t${order.customerPhone}"`,
+      `"${(order.customerEmail || '').replace(/"/g, '""')}"`,
+      `"${(order.productName || '').replace(/"/g, '""')}"`,
+      `"${(order.package || '').replace(/"/g, '""')}"`,
+      order.quantity,
+      order.totalPrice,
+      `"${(order.paymentMethodName || '').replace(/"/g, '""')}"`,
+      `"${order.status.toUpperCase()}"`,
+      `"${(order.credentials?.emailOrUser || '-').replace(/"/g, '""')}"`,
+      `"${(order.credentials?.passwordOrKey || '-').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const dateStr = new Date().toISOString().slice(0, 10);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Rekap_Pesanan_RAFIF_STORE_${dateStr}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   // If not logged in, show Login Screen
@@ -488,21 +541,34 @@ Layanan: ${fulfillingOrder.productName} (${fulfillingOrder.package})
                 <p className="text-xs text-gray-400">Kelola status dan pengiriman akun ke pelanggan</p>
               </div>
 
-              {/* Status Filter */}
-              <div className="flex items-center space-x-2">
-                <span className="text-xs text-gray-400">Filter:</span>
-                <select
-                  value={orderStatusFilter}
-                  onChange={e => setOrderStatusFilter(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl bg-[#0e121d] border border-white/10 text-xs text-white focus:outline-none focus:border-purple-500"
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Download Excel Button */}
+                <button
+                  type="button"
+                  onClick={exportToExcel}
+                  className="px-3.5 py-1.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 hover:text-white text-xs font-semibold flex items-center space-x-1.5 transition-all active:scale-95 shadow-sm"
+                  title="Unduh seluruh data pesanan ke format Excel (.csv)"
                 >
-                  <option value="all">Semua Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="paid">Paid</option>
-                  <option value="processing">Processing</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
+                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Download Excel (.CSV)</span>
+                </button>
+
+                {/* Status Filter */}
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-gray-400">Filter:</span>
+                  <select
+                    value={orderStatusFilter}
+                    onChange={e => setOrderStatusFilter(e.target.value)}
+                    className="px-3 py-1.5 rounded-xl bg-[#0e121d] border border-white/10 text-xs text-white focus:outline-none focus:border-purple-500"
+                  >
+                    <option value="all">Semua Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="paid">Paid</option>
+                    <option value="processing">Processing</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
               </div>
             </div>
 
